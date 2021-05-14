@@ -5,7 +5,8 @@
 enum OrderBookType
 {
     bid,
-    ask
+    ask,
+    unknown
 };
 
 class OrderBookEntry
@@ -16,6 +17,8 @@ public:
                    std::string timestamp,
                    std::string product,
                    OrderBookType orderType);
+
+    static OrderBookType stringToOrderBookType(std::string);
 
     double price;
     double amount;
