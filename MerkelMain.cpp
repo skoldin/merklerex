@@ -6,22 +6,15 @@
 
 void MerkelMain::init()
 {
-    loadOrderBook();
-
     int input;
-
+    currentTime = orderBook.getEarliestTime();
     while (true)
     {
-        
+
         printMenu();
         input = getUserOption();
         processUserOption(input);
     }
-}
-
-void MerkelMain::loadOrderBook()
-{
-   orders = CSVReader::readCSV("20200317.csv"); 
 }
 
 void MerkelMain::printMenu()
@@ -30,10 +23,11 @@ void MerkelMain::printMenu()
     std::cout << "2: Print exchange stats" << std::endl;
     std::cout << "3: Make an offer" << std::endl;
     std::cout << "4: Make a bid" << std::endl;
-    std::cout << "5: Print wwallet" << std::endl;
-    std::cout << "5: Continue" << std::endl;
+    std::cout << "5: Print wallet" << std::endl;
+    std::cout << "6: Continue" << std::endl;
 
     std::cout << "=================" << std::endl;
+    std::cout << "Current time is: " << currentTime << std::endl;
     std::cout << "Type in 1-6" << std::endl;
 }
 
@@ -54,24 +48,24 @@ void MerkelMain::printHelp()
 
 void MerkelMain::printMarketStats()
 {
-    std::cout << "OrderBook contains: " << orders.size() << " entries" << std::endl;
-
-    unsigned int bids = 0;
-    unsigned int asks = 0;
-
-    for (const OrderBookEntry& e: orders)
+    for (std::string const &product : orderBook.getKnownProducts())
     {
-        if (e.orderType == OrderBookType::ask)
-        {
-            asks ++;
-        }
-        if (e.orderType == OrderBookType::bid)
-        {
-            bids ++;
-        }
+        std::cout << "Product: " << product << std::endl;
+
+        std::vector<OrderBookEntry> entries = orderBook.getOrders(
+            OrderBookType::ask,
+            product,
+            currentTime);
+
+        std::cout << "Asks seen: " << entries.size() << std::endl;
+        std::cout << "Max ask: " << OrderBook::getHighPrice(entries) << std::endl;
+        std::cout << "Min ask: " << OrderBook::getLowPrice(entries) << std::endl;
+        
+        // debug
+        std::cout << "The price has changed by " << OrderBook::getPriceChangePercentage(entries) << "%" << std::endl;
     }
 
-    std::cout << "OrderBook asks: " << asks << " Bids: " << bids << std::endl;
+
 }
 
 void MerkelMain::enterOffer()
@@ -86,7 +80,11 @@ void MerkelMain::enterBid()
 
 void MerkelMain::printWallet() { std::cout << "Your wallet is empty" << std::endl; }
 
-void MerkelMain::gotoNextTimeFrame() { std::cout << "Going to next time frame" << std::endl; }
+void MerkelMain::gotoNextTimeFrame()
+{
+    std::cout << "Going to next time frame" << std::endl;
+    currentTime = orderBook.getNextTime(currentTime);
+}
 
 void MerkelMain::processUserOption(int userOption)
 {

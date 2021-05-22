@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include "OrderBookEntry.h"
+#include "OrderBook.h"
 
 class MerkelMain
 {
@@ -12,25 +13,17 @@ public:
     void init();
 
 private:
-    std::vector<OrderBookEntry> orders;
-
-    void loadOrderBook();
-
     void printMenu();
-
     int getUserOption();
-
     void printHelp();
-
     void printMarketStats();
-
     void enterOffer();
-
     void enterBid();
-
     void printWallet();
-
     void gotoNextTimeFrame();
-
     void processUserOption(int userOption);
+
+    std::string currentTime;
+
+    OrderBook orderBook{"20200317.csv"};
 };
