@@ -28,7 +28,7 @@ std::vector<std::string> OrderBook::getKnownProducts()
     return products;
 };
 
-/** return vector of Orders according to thhe sent filters */
+/** return vector of Orders according to the sent filters */
 std::vector<OrderBookEntry> OrderBook::getOrders(
     OrderBookType type,
     std::string product,
@@ -106,4 +106,68 @@ double OrderBook::getPriceChangePercentage(std::vector<OrderBookEntry> &orders)
     float percent = diff / (startPrice / 100);
 
     return percent;
+}
+
+void OrderBook::insertOrder(OrderBookEntry &order)
+{
+    orders.push_back(order);
+
+    std::sort(orders.begin(), orders.end(), OrderBookEntry::compareByTimemstamp);
+}
+
+std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std::string timestamp)
+{
+    std::vector<OrderBookEntry> asks, bids, sales;
+
+    asks = OrderBook::getOrders(OrderBookType::ask, product, timestamp);
+    bids = OrderBook::getOrders(OrderBookType::bid, product, timestamp);
+
+    std::sort(asks.begin(), asks.end(), OrderBookEntry::compareByPriceAsc);
+    std::sort(bids.begin(), bids.end(), OrderBookEntry::compareByPriceDesc);
+
+    std::cout << "PRODUCT " << product << std::endl;
+
+    for (auto &ask : asks)
+    {
+        for (auto &bid : bids)
+        {
+            if (bid.price >= ask.price)
+            {
+                double saleAmount;
+
+                if (bid.amount >= ask.amount)
+                {
+                    saleAmount = ask.amount;
+
+                    // make sure the bid is not processed again
+                    bid.amount = bid.amount - ask.amount;
+                } else if (bid.amount < ask.amount)
+                {
+                    saleAmount = bid.amount;
+
+                    // the remaining amount will be processed by further bids
+                    ask.amount = ask.amount - bid.amount;
+                }
+
+
+                // either bid or ask username is going to be simuser. Decide the type of operation based on this
+                OrderBookType type = OrderBookType::asksale;
+
+                if (bid.username == "simuser")
+                {
+                    type = OrderBookType::bidsale;
+                }
+
+                if (type == OrderBookType::asksale && ask.username != "simuser")
+                {
+                    throw "The ask was not put by simuser";
+                }
+
+
+                sales.push_back({ask.price, saleAmount, timestamp, product, type, "simuser"});
+            }
+        }
+    }
+
+    return sales;
 }

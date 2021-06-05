@@ -17,16 +17,19 @@ std::vector<OrderBookEntry> CSVReader::readCSV(std::string csvFile)
 
     if (csvFileStream.is_open())
     {
-         while (std::getline(csvFileStream, line))
+        while (std::getline(csvFileStream, line))
         {
-           tokens = tokenise(line, ',');
+            tokens = tokenise(line, ',');
 
-           try {
-              OrderBookEntry orderBookEntry = stringsToOrderBookEntry(tokens); 
-              entries.push_back(orderBookEntry); 
-           } catch(const std::exception& e) {
-              std::cout << "CSVReader::readCSV read " << entries.size() << " entries" << std::endl; 
-           }
+            try
+            {
+                OrderBookEntry orderBookEntry = stringsToOrderBookEntry(tokens);
+                entries.push_back(orderBookEntry);
+            }
+            catch (const std::exception &e)
+            {
+                std::cout << "CSVReader::readCSV read " << entries.size() << " entries" << std::endl;
+            }
         }
 
         csvFileStream.close();
@@ -100,4 +103,34 @@ std::vector<std::string> CSVReader::tokenise(std::string csvLine, char separator
     } while (end > 0);
 
     return tokens;
+}
+
+OrderBookEntry CSVReader::stringsToOrderBookEntry(
+    std::string priceString,
+    std::string amountString,
+    std::string timestamp,
+    std::string product,
+    OrderBookType orderType)
+{
+    double price, amount;
+    try
+    {
+        price = std::stod(priceString);
+        amount = std::stod(amountString);
+    }
+    catch (const std::exception &e)
+    {
+        std::cout << "CSVReader::stringsToOrderBookEntry: Bad float! " << price << std::endl;
+        std::cout << "CSVReader::stringsToOrderBookEntry: Bad float! " << amount<< std::endl;
+        throw;
+    }
+
+    OrderBookEntry orderBookEntry{
+        price,
+        amount,
+        timestamp,
+        product,
+        orderType};
+
+    return orderBookEntry;
 }

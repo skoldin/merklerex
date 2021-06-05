@@ -32,6 +32,10 @@ class OrderBook
         /** Returns percentage in price change for each product */
         static double getPriceChangePercentage(std::vector<OrderBookEntry>& orders);
 
+        void insertOrder(OrderBookEntry &order);
+
+        std::vector<OrderBookEntry> matchAsksToBids(std::string product, std::string timestamp);
+
     private:
        std::vector<OrderBookEntry> orders;
 };
