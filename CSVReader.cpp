@@ -35,7 +35,6 @@ std::vector<OrderBookEntry> CSVReader::readCSV(std::string csvFile)
         csvFileStream.close();
     }
 
-    std::cout << "CSVReader::readCSV bad data" << std::endl;
     return entries;
 }
 

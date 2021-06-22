@@ -28,18 +28,22 @@ std::vector<std::string> OrderBook::getKnownProducts()
     return products;
 };
 
+/** return all orders */
+
+
 /** return vector of Orders according to the sent filters */
 std::vector<OrderBookEntry> OrderBook::getOrders(
     OrderBookType type,
-    std::string product,
-    std::string timestamp)
+    std::string timestamp,
+    std::string product
+    )
 {
     std::vector<OrderBookEntry> ordersSub;
 
     for (OrderBookEntry &entry : orders)
     {
         if (entry.orderType == type &&
-            entry.product == product &&
+            (product == "" || entry.product == product) &&
             entry.timestamp == timestamp)
         {
             ordersSub.push_back(entry);
@@ -130,7 +134,8 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
     for (auto &ask : asks)
     {
         for (auto &bid : bids)
-        {
+        {   
+            // TODO: check if needs check for 0 amount bid/ask
             if (bid.price >= ask.price)
             {
                 double saleAmount;
@@ -170,4 +175,9 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
     }
 
     return sales;
+}
+
+std::vector<OrderBookEntry> OrderBook::getAllOrders()
+{
+    return orders;
 }

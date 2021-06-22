@@ -4,11 +4,15 @@
 #include "OrderBookEntry.h"
 #include "MerkelMain.h"
 #include "CSVReader.h"
+#include "Bot.h"
 
 int main()
 {
-    MerkelMain app{};
-    app.init();
+    // MerkelMain app{};
+    // app.init();
+
+    Bot bot{};
+    bot.init();
 
     return 0;
 }

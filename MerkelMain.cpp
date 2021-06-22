@@ -68,8 +68,8 @@ void MerkelMain::printMarketStats()
 
         std::vector<OrderBookEntry> entries = orderBook.getOrders(
             OrderBookType::ask,
-            product,
-            currentTime);
+            currentTime,
+            product);
 
         std::cout << "Asks seen: " << entries.size() << std::endl;
         std::cout << "Max ask: " << OrderBook::getHighPrice(entries) << std::endl;
@@ -184,4 +184,9 @@ void MerkelMain::processUserOption(int userOption)
     {
         gotoNextTimeFrame();
     }
+}
+    
+OrderBook MerkelMain::getOrderBook()
+{
+    return orderBook;
 }

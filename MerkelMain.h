@@ -12,6 +12,7 @@ class MerkelMain
 public:
     // MerkelMain();
     void init();
+    OrderBook getOrderBook();
 
 private:
     void printMenu();
