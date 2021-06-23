@@ -19,6 +19,10 @@ class Wallet
         bool canFulfillOrder(const OrderBookEntry &order);
         /** update the contents of the wallet assuming the order was made by the owner of the wallet */
         void processSale(OrderBookEntry &sale);
+        /** check the amount of specified currency in the wallet */
+        double checkBalance(std::string type);
+        /** get the type of currency we need to fulfull the order */
+        std::string getOrderCurrencyType(std::string product, OrderBookType orderType);
 
         /** generate a string representation of the wallet */
         std::string toString();

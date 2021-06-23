@@ -5,7 +5,6 @@
 
 Wallet::Wallet()
 {
-
 }
 
 void Wallet::insertCurrency(std::string type, double amount)
@@ -17,36 +16,39 @@ void Wallet::insertCurrency(std::string type, double amount)
 
     if (currencies.count(type) == 0)
     {
-       currencies[type] = 0;
+        currencies[type] = 0;
     }
 
-    currencies[type] += amount; 
+    currencies[type] += amount;
 }
-bool Wallet::removeCurrency(std::string type, double amount) {
-   if (amount < 0)
+bool Wallet::removeCurrency(std::string type, double amount)
+{
+    if (amount < 0)
     {
         throw "Trying to insert negative balance";
     }
 
     if (!containsCurrency(type, amount))
     {
-       return false;
+        return false;
     }
 
-    currencies[type] -= amount; 
-    
+    currencies[type] -= amount;
+
     return true;
 }
 bool Wallet::containsCurrency(std::string type, double amount)
 {
-    if (currencies.count(type) == 0) {
+    if (currencies.count(type) == 0)
+    {
         return false;
     }
-    
+
     return currencies[type] >= amount;
 }
 
-std::string Wallet::toString() {
+std::string Wallet::toString()
+{
     std::string result;
     for (std::pair<std::string, double> pair : currencies)
     {
@@ -58,15 +60,29 @@ std::string Wallet::toString() {
     return result;
 }
 
+std::string Wallet::getOrderCurrencyType(std::string product, OrderBookType orderType)
+{
+    std::vector<std::string> orderCurrencies = CSVReader::tokenise(product, '/');
+
+    if (orderType == OrderBookType::ask)
+    {
+        return orderCurrencies[0];
+    }
+
+    if (orderType == OrderBookType::bid)
+    {
+        return orderCurrencies[1];
+    }
+}
+
 bool Wallet::canFulfillOrder(const OrderBookEntry &order)
 {
-    std::vector<std::string> orderCurrencies = CSVReader::tokenise(order.product, '/');
+
+    std::string currency = getOrderCurrencyType(order.product, order.orderType);
 
     if (order.orderType == OrderBookType::ask)
     {
         double amount = order.amount;
-
-        std::string currency = orderCurrencies[0];
 
         std::cout << "Wallet::canFulfillOrder " << currency << " : " << amount << std::endl;
         return containsCurrency(currency, amount);
@@ -75,8 +91,6 @@ bool Wallet::canFulfillOrder(const OrderBookEntry &order)
     if (order.orderType == OrderBookType::bid)
     {
         double amount = order.amount * order.price;
-
-        std::string currency = orderCurrencies[1];
 
         std::cout << "Wallet::canFulfillOrder " << currency << " : " << amount << std::endl;
         return containsCurrency(currency, amount);
@@ -99,8 +113,8 @@ void Wallet::processSale(OrderBookEntry &sale)
 
         std::string incomingCurrency = orderCurrencies[1];
 
-       currencies[incomingCurrency] += incomingAmount;
-       currencies[outgoingCurrency] -= outgoingAmount;
+        currencies[incomingCurrency] += incomingAmount;
+        currencies[outgoingCurrency] -= outgoingAmount;
     }
 
     if (sale.orderType == OrderBookType::bidsale)
@@ -113,7 +127,12 @@ void Wallet::processSale(OrderBookEntry &sale)
 
         std::string outgoingCurrency = orderCurrencies[1];
 
-       currencies[incomingCurrency] += incomingAmount;
-       currencies[outgoingCurrency] -= outgoingAmount;
+        currencies[incomingCurrency] += incomingAmount;
+        currencies[outgoingCurrency] -= outgoingAmount;
     }
+}
+
+double Wallet::checkBalance(std::string type)
+{
+    return currencies[type];
 }

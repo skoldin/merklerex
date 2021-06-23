@@ -14,6 +14,7 @@ private:
     void calculateEMA(std::map<std::string, double> rates);
     void withdrawOrder(OrderBookType orderType, std::string product, std::string timestamp);
     OrderBookEntry createBid(std::string product, double price, std::string timestamp); 
+    OrderBookEntry createAsk(std::string product, double price, std::string timestamp); 
     void handleOrders();
 
     std::string currentTime;

@@ -1,5 +1,6 @@
 #include "Bot.h"
 #include "OrderBook.h"
+#include <limits>
 
 std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> orders)
 {
@@ -78,21 +79,22 @@ void Bot::init()
     currentTime = orderBook.getEarliestTime();
 
     wallet.insertCurrency("BTC", 10);
+    wallet.insertCurrency("DOGE", 1000000);
+    wallet.insertCurrency("ETH", 300);
 
     std::vector<OrderBookEntry> orders = orderBook.getAllOrders();
-    std::string currentTimestamp = currentTime;
     std::vector<OrderBookEntry> currentTimeOrders;
 
     for (const auto &order : orders)
     {
         // collect orders until the timestamp changes
-        if (order.timestamp == currentTimestamp)
+        if (order.timestamp == currentTime)
         {
             currentTimeOrders.push_back(order);
             continue;
         }
 
-        std::cout << "There are " << currentTimeOrders.size() << " orders on " << currentTimestamp << std::endl;
+        std::cout << "There are " << currentTimeOrders.size() << " orders on " << currentTime << std::endl;
 
         // once the timestamp changes, process collected orders
         // calculate SMA for each product in the timestamp
@@ -112,10 +114,51 @@ void Bot::init()
 
         // remove everything from currentTimeOrders and add the current order
         currentTimeOrders.clear();
-        currentTimestamp = order.timestamp;
+        currentTime = order.timestamp;
         currentTimeOrders.push_back(order);
+
+        // handle orders for the current timestamp
+        handleOrders();
     }
 }
+
+void Bot::withdrawOrder(OrderBookType orderType, std::string product, std::string timestamp)
+{
+
+}
+
+OrderBookEntry Bot::createBid(std::string product, double price, std::string timestamp)
+{
+    std::cout << "CREATE BID" << std::endl;
+}
+
+OrderBookEntry Bot::createAsk(std::string product, double price, std::string timestamp)
+{
+    std::cout << "CREATE ASK" << std::endl;
+
+    std::string currencyType = wallet.getOrderCurrencyType(product, OrderBookType::ask);
+    double availableCurrency = wallet.checkBalance(currencyType);
+
+    std::cout << "We have " << availableCurrency << " " << currencyType << std::endl;
+
+    // create order of the highest price possible to be handled first (we will still pay no more than asked)
+    OrderBookEntry orderBookEntry{
+        std::numeric_limits<double>::max(),
+        availableCurrency,
+        timestamp,
+        product,
+        OrderBookType::ask,
+        "bot"};
+
+    if (wallet.canFulfillOrder(orderBookEntry))
+    {
+        std::cout << "The order can be placed" << std::endl;
+        return orderBookEntry;
+    } else {
+        std::cout << "The order CANNOT be placed" << std::endl;
+    }
+}
+
 
 void Bot::handleOrders()
 {
@@ -126,12 +169,52 @@ void Bot::handleOrders()
         return;
     }
 
+    std::cout << "START COMPARING EMAs" << std::endl;
+
     // EMAs for the previoius timestamp
     std::map<std::string, double> previousEMAs = EMAs[EMAs.size() - 2];
     // EMAs for the current timestamp
     std::map<std::string, double> currentEMAs = EMAs[EMAs.size() - 1];
 
-    // TODO: loop through known products, for each compare EMA if exists
+    for (auto const &eachProductPreviousEMA : previousEMAs)
+    {
 
+        std::string productName = eachProductPreviousEMA.first;
+        double previousEMA = eachProductPreviousEMA.second;
+        double currentEMA = currentEMAs[productName];
 
+        // compare previous EMA with the current one for each entry
+        if (previousEMA > currentEMA)
+        {
+            // the price decreased, it's a good time to remove bids and create asks as we expect it might decrease further
+            std::cout << productName << " price decreased from " << previousEMA << " to " << currentEMA << std::endl;
+
+            OrderBookEntry orderBookEntry = createAsk(productName, currentEMA, currentTime);
+
+            if (orderBookEntry.amount > 0)
+            {
+                // TODO: push to log
+                orderBook.insertOrder(orderBookEntry);
+            }
+
+            // remove current bids
+            withdrawOrder(OrderBookType::bid, productName, currentTime);
+        }
+        else if (currentEMA > previousEMA)
+        {
+            // the price increased, it's a good time to remove asks and create bids as we expect it might increase further
+            std::cout << productName << " price increased from " << previousEMA << " to " << currentEMA << std::endl;
+
+            OrderBookEntry orderBookEntry = createBid(productName, currentEMA, currentTime);
+
+            if (orderBookEntry.amount > 0)
+            {
+                // TODO: push to log
+                orderBook.insertOrder(orderBookEntry);
+            }
+
+            // remove current akss
+            withdrawOrder(OrderBookType::ask, productName, currentTime);
+        }
+    }
 }
