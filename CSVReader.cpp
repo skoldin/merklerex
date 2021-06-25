@@ -15,6 +15,8 @@ std::vector<OrderBookEntry> CSVReader::readCSV(std::string csvFile)
     std::vector<OrderBookEntry> entries;
     std::vector<std::string> tokens;
 
+    bool isFileOpen = csvFileStream.is_open();
+
     if (csvFileStream.is_open())
     {
         while (std::getline(csvFileStream, line))

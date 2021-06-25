@@ -30,20 +30,18 @@ std::vector<std::string> OrderBook::getKnownProducts()
 
 /** return all orders */
 
-
 /** return vector of Orders according to the sent filters */
 std::vector<OrderBookEntry> OrderBook::getOrders(
     OrderBookType type,
     std::string timestamp,
-    std::string product
-    )
+    std::string product)
 {
     std::vector<OrderBookEntry> ordersSub;
 
     for (OrderBookEntry &entry : orders)
     {
         if (entry.orderType == type &&
-            (product == "" || entry.product == product) &&
+            entry.product == product &&
             entry.timestamp == timestamp)
         {
             ordersSub.push_back(entry);
@@ -114,6 +112,7 @@ double OrderBook::getPriceChangePercentage(std::vector<OrderBookEntry> &orders)
 
 void OrderBook::insertOrder(OrderBookEntry &order)
 {
+    std::cout << "OrderBook::insertOrder inserted " << order.product << "," << order.price << "," << order.amount << "," << order.orderType << std::endl;
     orders.push_back(order);
 
     std::sort(orders.begin(), orders.end(), OrderBookEntry::compareByTimemstamp);
@@ -123,18 +122,33 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
 {
     std::vector<OrderBookEntry> asks, bids, sales;
 
-    asks = OrderBook::getOrders(OrderBookType::ask, product, timestamp);
-    bids = OrderBook::getOrders(OrderBookType::bid, product, timestamp);
+    std::cout << "GETTING ORDERS FOR " << product << "," << timestamp << std::endl;
+    asks = OrderBook::getOrders(OrderBookType::ask, timestamp, product);
+    bids = OrderBook::getOrders(OrderBookType::bid, timestamp, product);
 
     std::sort(asks.begin(), asks.end(), OrderBookEntry::compareByPriceAsc);
     std::sort(bids.begin(), bids.end(), OrderBookEntry::compareByPriceDesc);
 
     std::cout << "PRODUCT " << product << std::endl;
+    std::cout << "ASKS SIZE: " << asks.size() << " BIDS SIZE: " << bids.size() << std::endl;
 
+    // TODO: optimize this
     for (auto &ask : asks)
     {
         for (auto &bid : bids)
-        {   
+        {
+            // TODO: debug info
+            if (product == "BTC/USDT")
+            {
+                if (bid.username == "bot")
+                {
+                    std::cout << "BOT bid" << std::endl;
+                    std::cout << bid.product << "," << bid.price << "," << bid.amount << std::endl;
+                }
+                std::cout << "Bid price " << bid.price << " Ask price " << ask.price << std::endl;
+                std::cout << (bid.price >= ask.price) << std::endl;
+            }
+
             // TODO: check if needs check for 0 amount bid/ask
             if (bid.price >= ask.price)
             {
@@ -146,7 +160,8 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
 
                     // make sure the bid is not processed again
                     bid.amount = bid.amount - ask.amount;
-                } else if (bid.amount < ask.amount)
+                }
+                else if (bid.amount < ask.amount)
                 {
                     saleAmount = bid.amount;
 
@@ -154,20 +169,19 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
                     ask.amount = ask.amount - bid.amount;
                 }
 
-
                 // either bid or ask username is going to be simuser. Decide the type of operation based on this
                 OrderBookType type = OrderBookType::asksale;
 
-                if (bid.username == "simuser")
+                if (bid.username == "simuser" || bid.username == "bot")
                 {
                     type = OrderBookType::bidsale;
                 }
 
-                if (type == OrderBookType::asksale && ask.username != "simuser")
+                if (type == OrderBookType::asksale && (ask.username != "simuser" || ask.username != "bot"))
                 {
-                    throw "The ask was not put by simuser";
+                    std::cout << "The ask sale was not put by simuser" << std::endl;
+                    throw "The ask sale was not put by simuser";
                 }
-
 
                 sales.push_back({ask.price, saleAmount, timestamp, product, type, "simuser"});
             }

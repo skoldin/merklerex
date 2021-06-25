@@ -13,6 +13,7 @@ public:
     // MerkelMain();
     void init();
     OrderBook getOrderBook();
+    void gotoNextTimeFrame();
 
 private:
     void printMenu();
@@ -20,13 +21,12 @@ private:
     void printHelp();
     void printMarketStats();
     void printWallet();
-    void gotoNextTimeFrame();
     void processUserOption(int userOption);
     void enterOrder(OrderBookType orderBookType);
 
     std::string currentTime;
 
-    OrderBook orderBook{"20200317.csv"};
+    OrderBook orderBook{"test.csv"};
 
     Wallet wallet;
 };

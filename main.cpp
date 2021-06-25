@@ -8,10 +8,10 @@
 
 int main()
 {
-    // MerkelMain app{};
+    MerkelMain app{};
     // app.init();
 
-    Bot bot{};
+    Bot bot{app};
     bot.init();
 
     return 0;

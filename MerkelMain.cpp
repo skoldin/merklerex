@@ -102,7 +102,7 @@ void MerkelMain::enterOrder(OrderBookType orderBookType) {
                 tokens[2],
                 currentTime,
                 tokens[0],
-                OrderBookType::bid);
+                orderBookType);
 
             orderBookEntry.username = "simuser";    
 

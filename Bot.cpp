@@ -1,6 +1,9 @@
 #include "Bot.h"
 #include "OrderBook.h"
+#include "MerkelMain.h"
 #include <limits>
+
+Bot::Bot(MerkelMain app): app(app), orderBook(app.getOrderBook()){}
 
 std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> orders)
 {
@@ -15,6 +18,12 @@ std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> orders)
 
     for (const OrderBookEntry &order : orders)
     {
+        // we are interested only in asks
+        if (order.orderType != OrderBookType::ask)
+        {
+            continue;
+        }
+
         // if the product is not added yet, itinialize count to 1 and sum to the current price
         // otherwise, increment the count and add the price to existing
         if (sums.find(order.product) == rates.end())
@@ -76,11 +85,13 @@ void Bot::calculateEMA(std::map<std::string, double> rates)
 /** Starts the bot with some initial currency */
 void Bot::init()
 {
+    orderBook = app.getOrderBook();
     currentTime = orderBook.getEarliestTime();
 
-    wallet.insertCurrency("BTC", 10);
-    wallet.insertCurrency("DOGE", 1000000);
-    wallet.insertCurrency("ETH", 300);
+    wallet.insertCurrency("USDT", 10000);
+    // wallet.insertCurrency("BTC", 10);
+    // wallet.insertCurrency("DOGE", 1000000);
+    // wallet.insertCurrency("ETH", 300);
 
     std::vector<OrderBookEntry> orders = orderBook.getAllOrders();
     std::vector<OrderBookEntry> currentTimeOrders;
@@ -103,23 +114,34 @@ void Bot::init()
         calculateEMA(rates);
 
         // TODO: debug info
-        for (const auto &EMA : EMAs)
-        {
-            for (const auto &test : EMA)
-            {
-                std::cout << "The product: " << test.first << " The EMA: " << test.second << std::endl;
-            }
-            std::cout << "---------" << std::endl;
-        }
+        // for (const auto &EMA : EMAs)
+        // {
+        //     for (const auto &test : EMA)
+        //     {
+        //         std::cout << "The product: " << test.first << " The EMA: " << test.second << std::endl;
+        //     }
+        //     std::cout << "---------" << std::endl;
+        // }
 
+        // place orders based on changes in EMAs comparing previous and current timestamps
+        placeOrders();
+
+        // std::cout << "TEST RECEIVING ORDERS FOR " << currentTime << std::endl;
+        // std::vector<OrderBookEntry> result = orderBook.getOrders(OrderBookType::ask, currentTime, "BTC/USDT");
+        // std::cout << "AMOUNT " << result.size() << std::endl;
+        
         // remove everything from currentTimeOrders and add the current order
         currentTimeOrders.clear();
         currentTime = order.timestamp;
         currentTimeOrders.push_back(order);
 
-        // handle orders for the current timestamp
-        handleOrders();
+        // go to the next timestamp
+        app.gotoNextTimeFrame();
+
+        std::cout << "-----------------------" << std::endl;
     }
+
+    std::cout << wallet.toString() << std::endl;
 }
 
 void Bot::withdrawOrder(OrderBookType orderType, std::string product, std::string timestamp)
@@ -129,38 +151,65 @@ void Bot::withdrawOrder(OrderBookType orderType, std::string product, std::strin
 
 OrderBookEntry Bot::createBid(std::string product, double price, std::string timestamp)
 {
-    std::cout << "CREATE BID" << std::endl;
+    std::cout << "CREATE BID " << timestamp << std::endl;
+
+    std::string currencyType = wallet.getOrderCurrencyType(product, OrderBookType::bid);
+    double availableCurrency = wallet.checkBalance(currencyType);
+
+    std::cout << "We have " << availableCurrency << " " << currencyType << std::endl;
+
+    // add only 20% to market price because it's used in calculations whether we can fulfill the order
+    // so if set it higher, we'll get the priority but will not be able to buy as much as we can
+    OrderBookEntry orderBookEntry{
+        price * 1.2, 
+        availableCurrency / price,
+        timestamp,
+        product,
+        OrderBookType::bid,
+        "bot"};
+
+    while(!wallet.canFulfillOrder(orderBookEntry))
+    {
+        // decrease the amount until we can fulfill the order
+        if (orderBookEntry.amount > 0)
+        {
+            orderBookEntry.amount = orderBookEntry.amount / 2;
+        }
+    }
+
+    return orderBookEntry;
 }
 
 OrderBookEntry Bot::createAsk(std::string product, double price, std::string timestamp)
 {
-    std::cout << "CREATE ASK" << std::endl;
+    std::cout << "CREATE ASK " << timestamp << std::endl;
 
     std::string currencyType = wallet.getOrderCurrencyType(product, OrderBookType::ask);
     double availableCurrency = wallet.checkBalance(currencyType);
 
     std::cout << "We have " << availableCurrency << " " << currencyType << std::endl;
 
-    // create order of the highest price possible to be handled first (we will still pay no more than asked)
     OrderBookEntry orderBookEntry{
-        std::numeric_limits<double>::max(),
+        price,
         availableCurrency,
         timestamp,
         product,
         OrderBookType::ask,
         "bot"};
 
-    if (wallet.canFulfillOrder(orderBookEntry))
+    std::cout << "Ask " << availableCurrency << " " << product << std::endl;
+    // if we cannnot fulfill the order, set amount to 0
+    if (!wallet.canFulfillOrder(orderBookEntry))
     {
-        std::cout << "The order can be placed" << std::endl;
-        return orderBookEntry;
-    } else {
-        std::cout << "The order CANNOT be placed" << std::endl;
+        std::cout << "The order cannot be placed" << std::endl;
+        orderBookEntry.amount = 0;
     }
+
+    return orderBookEntry;
 }
 
 
-void Bot::handleOrders()
+void Bot::placeOrders()
 {
     // if the number of EMAs < 2, there is no enough data for decisions
     if (EMAs.size() < 2)
@@ -198,7 +247,7 @@ void Bot::handleOrders()
             }
 
             // remove current bids
-            withdrawOrder(OrderBookType::bid, productName, currentTime);
+            // withdrawOrder(OrderBookType::bid, productName, currentTime);
         }
         else if (currentEMA > previousEMA)
         {
@@ -214,7 +263,7 @@ void Bot::handleOrders()
             }
 
             // remove current akss
-            withdrawOrder(OrderBookType::ask, productName, currentTime);
+            // withdrawOrder(OrderBookType::ask, productName, currentTime);
         }
     }
 }
