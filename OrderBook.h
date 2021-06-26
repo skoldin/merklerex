@@ -40,7 +40,7 @@ class OrderBook
         std::vector<OrderBookEntry> matchAsksToBids(std::string product, std::string timestamp);
 
 
-        void withdrawOrders(OrderBookType orderType, std::string product, std::string timestamp, std::string username);
+        void withdrawOrders(OrderBookType orderType, std::string product, std::string username);
 
     private:
        std::vector<OrderBookEntry> orders;

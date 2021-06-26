@@ -2,6 +2,7 @@
 #include "CSVReader.h"
 #include <map>
 #include <algorithm>
+#include "Logger.h"
 
 /** construct, reading a csv data file */
 OrderBook::OrderBook(std::string filename)
@@ -112,8 +113,13 @@ double OrderBook::getPriceChangePercentage(std::vector<OrderBookEntry> &orders)
 
 void OrderBook::insertOrder(OrderBookEntry &order)
 {
-    std::cout << "OrderBook::insertOrder inserted " << order.product << "," << order.price << ","
-              << order.amount << "," << order.orderType << "," << order.timestamp << std::endl;
+    std::string message = "Inserted an order: " +
+                          order.product + "," + std::to_string(order.price) +
+                          "," + std::to_string(order.amount) + "," +
+                          OrderBookEntry::orderBookTypeToString(order.orderType) + "," + order.timestamp;
+    std::cout << "OrderBook::insertOrder " << message << std::endl;
+    Logger::pushToLog(message);
+
     orders.push_back(order);
 
     std::sort(orders.begin(), orders.end(), OrderBookEntry::compareByTimemstamp);
@@ -153,7 +159,7 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
             bid.amount = bid.amount - ask.amount;
 
             askIndex += 1;
-        } 
+        }
         else // fully sell out the bid
         {
             saleAmount = bid.amount;
@@ -166,10 +172,12 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
 
         // either bid or ask username is going to be simuser. Decide the type of operation based on this
         OrderBookType type = OrderBookType::asksale;
+        std::string username = ask.username;
 
         if (bid.username == "simuser" || bid.username == "bot")
         {
             type = OrderBookType::bidsale;
+            username = bid.username;
         }
 
         if (type == OrderBookType::asksale && (ask.username != "simuser" || ask.username != "bot"))
@@ -178,7 +186,7 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
             throw "The ask sale was not put by simuser";
         }
 
-        sales.push_back({ask.price, saleAmount, timestamp, product, type, "simuser"});
+        sales.push_back({ask.price, saleAmount, timestamp, product, type, username});
     }
 
     return sales;
@@ -192,19 +200,20 @@ const std::vector<OrderBookEntry> &OrderBook::getAllOrders()
 void OrderBook::withdrawOrders(
     OrderBookType orderType,
     std::string product,
-    std::string timestamp,
     std::string username)
 {
-    std::cout << "Bot::withdrawOrder " << orderType << "," << product << "," << timestamp << std::endl;
+
     std::vector<OrderBookEntry> filteredOrders;
 
     for (const auto &order : orders)
     {
         if (orderType == order.orderType &&
             product == order.product &&
-            timestamp == order.timestamp &&
             username == order.username)
         {
+            std::string message = "Withdrawn an order: " + OrderBookEntry::orderBookTypeToString(orderType) + "," + product;
+            std::cout << "Bot::withdrawOrder " << message << std::endl;
+            Logger::pushToLog(message);
             continue;
         }
 

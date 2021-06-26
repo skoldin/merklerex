@@ -2,7 +2,7 @@
 #include "OrderBook.h"
 #include "MerkelMain.h"
 #include "CSVReader.h"
-#include <limits>
+#include "Logger.h"
 
 Bot::Bot(MerkelMain &app) : app(app) {}
 
@@ -34,14 +34,17 @@ std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> asks)
         }
     }
 
+
+    Logger::pushToLog("Rates:");
     // iterate through sums map and calculate simple moving average for each
     for (const auto &sum : sums)
     {
         // calculate SMA by dividing the total price (stored as value) in sums by the count received from counts by the product name (stored as key)
         double SMA = sum.second / counts[sum.first];
         rates.insert({sum.first, SMA});
+        Logger::pushToLog(sum.first + ": " + std::to_string(SMA));
     }
-
+    Logger::pushToLog("\n");
     return rates;
 }
 
@@ -92,7 +95,6 @@ void Bot::addCurrentTimeAsksAndBids(const OrderBookEntry &order, std::vector<Ord
 /** Goes through orders, does analysis on each timestamp and handles buying/selling based on the analysis  */
 void Bot::init()
 {
-    auto start = std::chrono::high_resolution_clock::now();
     OrderBook &orderBook = app.getOrderBook();
     Wallet &wallet = app.getWallet();
 
@@ -107,6 +109,7 @@ void Bot::init()
 
     std::cout << orders.size() << std::endl;
 
+    currentTime = orderBook.getEarliestTime();
     for (const auto &order : orders)
     {
         // collect orders until the timestamp changes
@@ -117,15 +120,20 @@ void Bot::init()
             continue;
         }
 
+        Logger::pushToLog("Current timestamp " + currentTime);
+
         std::cout << "There are " << currentTimeAsks.size() + currentTimeBids.size() << " orders on " << currentTime << std::endl;
 
         // once the timestamp changes, process collected orders
         // calculate SMA for each product in the timestamp
         std::map<std::string, double> rates = getRates(currentTimeAsks);
 
+        // log the amount of currencies in the wallet
+        Logger::pushToLog("The wallet contents:");
+        Logger::pushToLog(wallet.toString());
         // log current wallet worth in usd
-        showValueInUsd(rates);
-        
+        Logger::pushToLog("Total value in USD: " + std::to_string(getValueInUsd(rates)));
+
         // calculate EMA for each product in the timestamp
         calculateEMA(rates);
 
@@ -143,14 +151,10 @@ void Bot::init()
         addCurrentTimeAsksAndBids(order, currentTimeAsks, currentTimeBids);
 
         std::cout << "-----------------------" << std::endl;
+        Logger::pushToLog("\n\n");
     }
 
     std::cout << wallet.toString() << std::endl;
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto result = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "IT TOOK " << result.count() << "ms" << std::endl;
-    ;
 }
 
 OrderBookEntry Bot::createBid(std::string product, double price, std::string timestamp)
@@ -223,7 +227,7 @@ void Bot::placeOrders()
         return;
     }
 
-    std::cout << "START COMPARING EMAs" << std::endl;
+    std::cout << "Start comparing EMAs" << std::endl;
 
     // EMAs for the previoius timestamp
     std::map<std::string, double> previousEMAs = EMAs[EMAs.size() - 2];
@@ -249,12 +253,11 @@ void Bot::placeOrders()
 
             if (orderBookEntry.amount > 0)
             {
-                // TODO: push to log
                 orderBook.insertOrder(orderBookEntry);
             }
 
             // remove current bids
-            orderBook.withdrawOrders(OrderBookType::bid, productName, currentTime, "bot");
+            orderBook.withdrawOrders(OrderBookType::bid, productName, "bot");
         }
         else if (currentEMA > previousEMA)
         {
@@ -270,14 +273,13 @@ void Bot::placeOrders()
             }
 
             // remove current akss
-            orderBook.withdrawOrders(OrderBookType::ask, productName, currentTime, "bot");
+            orderBook.withdrawOrders(OrderBookType::ask, productName, "bot");
         }
     }
 }
 
-void Bot::showValueInUsd(std::map<std::string, double> rates)
+double Bot::getValueInUsd(std::map<std::string, double> rates)
 {
-    std::cout << "GET USD TOTAL " << std::endl;
     OrderBook &orderBook = app.getOrderBook();
     Wallet &wallet = app.getWallet();
 
@@ -298,5 +300,5 @@ void Bot::showValueInUsd(std::map<std::string, double> rates)
 
     sum = sum + wallet.checkBalance("USDT");
 
-    std::cout << "TOTALS IN USD: " << sum << std::endl;
+    return sum; 
 }

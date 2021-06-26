@@ -15,7 +15,6 @@ public:
     OrderBook& getOrderBook();
     Wallet& getWallet();
     void gotoNextTimeFrame();
-
 private:
     void printMenu();
     int getUserOption();

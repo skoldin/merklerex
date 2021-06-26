@@ -10,18 +10,20 @@
 class Bot
 {
 private:
-    // TODO: add comments
+    /** gets average prices for each product */
     std::map<std::string, double> getRates(std::vector<OrderBookEntry> orders);
+    /** calculates exponential moving average based on simple moving average for each product */
     void calculateEMA(std::map<std::string, double> rates);
     OrderBookEntry createBid(std::string product, double price, std::string timestamp); 
-    OrderBookEntry createAsk(std::string product, double price, std::string timestamp); 
+    OrderBookEntry createAsk(std::string product, double price, std::string timestamp);
+    /** compares EMAs and places and withdraws bids or asks based on trends */
     void placeOrders();
 
     std::string currentTime;
     std::vector<std::map<std::string, double>> EMAs;
     MerkelMain &app;
 
-    void showValueInUsd(std::map<std::string, double> rates);
+    double getValueInUsd(std::map<std::string, double> rates);
 
     /** adds an order to asks or bids */
     void addCurrentTimeAsksAndBids(const OrderBookEntry &order, std::vector<OrderBookEntry> &currentTimeAsks, std::vector<OrderBookEntry> &currentTimeBids);

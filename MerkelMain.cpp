@@ -4,6 +4,7 @@
 #include "CSVReader.h"
 #include "Wallet.h"
 #include <vector>
+#include <fstream>
 
 void MerkelMain::init()
 {
@@ -143,12 +144,8 @@ void MerkelMain::gotoNextTimeFrame()
         for (OrderBookEntry &sale : sales)
         {
             std::cout << "Sale price: " << sale.price << " amount " << sale.amount << std::endl;
-            if (sale.username == "simuser")
+            if (sale.username == "simuser" || sale.username == "bot")
             {
-                // TODO: DEBUG IT BUYS MORE THAN ASKED
-                // TEST: MAKE A BID ETH/BTC,1,1
-                // EXPECTED: BUYING 1 ETH FOR SOME BTC
-                // ACTUAL: IT SEEMS ITS COMPLETELY BUYING OUT SOME BID
                 wallet.processSale(sale);
             }
         }
