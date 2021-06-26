@@ -12,7 +12,8 @@ class MerkelMain
 public:
     // MerkelMain();
     void init();
-    OrderBook getOrderBook();
+    OrderBook& getOrderBook();
+    Wallet& getWallet();
     void gotoNextTimeFrame();
 
 private:
@@ -26,7 +27,7 @@ private:
 
     std::string currentTime;
 
-    OrderBook orderBook{"test.csv"};
+    OrderBook orderBook{"20200317.csv"};
 
     Wallet wallet;
 };

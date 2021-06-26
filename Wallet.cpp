@@ -73,6 +73,8 @@ std::string Wallet::getOrderCurrencyType(std::string product, OrderBookType orde
     {
         return orderCurrencies[1];
     }
+
+    throw "Unknown order type";
 }
 
 bool Wallet::canFulfillOrder(const OrderBookEntry &order)

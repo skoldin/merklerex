@@ -129,6 +129,9 @@ void MerkelMain::printWallet() {
 void MerkelMain::gotoNextTimeFrame()
 {
     std::cout << "Going to next time frame" << std::endl;
+    std::map<std::string, std::vector<OrderBookEntry>> asksPerProduct;
+    std::map<std::string, std::vector<OrderBookEntry>> bidsPerProduct;
+
 
     for (std::string &product : orderBook.getKnownProducts())
     {
@@ -182,11 +185,16 @@ void MerkelMain::processUserOption(int userOption)
     }
     if (userOption == 6)
     {
-        gotoNextTimeFrame();
+        // gotoNextTimeFrame();
     }
 }
-    
-OrderBook MerkelMain::getOrderBook()
+
+OrderBook& MerkelMain::getOrderBook()
 {
     return orderBook;
+}
+
+Wallet& MerkelMain::getWallet()
+{
+    return wallet;
 }

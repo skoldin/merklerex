@@ -1,11 +1,12 @@
 #include "Bot.h"
 #include "OrderBook.h"
 #include "MerkelMain.h"
+#include "CSVReader.h"
 #include <limits>
 
-Bot::Bot(MerkelMain app): app(app), orderBook(app.getOrderBook()){}
+Bot::Bot(MerkelMain &app) : app(app) {}
 
-std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> orders)
+std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> asks)
 {
     // store products and their corresponding simple averages
     std::map<std::string, double> rates;
@@ -14,28 +15,22 @@ std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> orders)
     // store the number of appearances for each product
     std::map<std::string, unsigned long> counts;
 
-    std::cout << "Got " << orders.size() << " orders" << std::endl;
+    std::cout << "Got " << asks.size() << " orders" << std::endl;
 
-    for (const OrderBookEntry &order : orders)
+    for (const OrderBookEntry &ask : asks)
     {
-        // we are interested only in asks
-        if (order.orderType != OrderBookType::ask)
-        {
-            continue;
-        }
-
         // if the product is not added yet, itinialize count to 1 and sum to the current price
         // otherwise, increment the count and add the price to existing
-        if (sums.find(order.product) == rates.end())
+        if (sums.find(ask.product) == rates.end())
         {
-            counts.insert({order.product, 1});
-            sums.insert({order.product, order.price});
+            counts.insert({ask.product, 1});
+            sums.insert({ask.product, ask.price});
         }
         else
         {
             // std::cout << "The product appears more than once " << order.product << std::endl;
-            counts[order.product] += 1;
-            sums[order.product] += order.price;
+            counts[ask.product] += 1;
+            sums[ask.product] += ask.price;
         }
     }
 
@@ -82,76 +77,86 @@ void Bot::calculateEMA(std::map<std::string, double> rates)
     }
 }
 
-/** Starts the bot with some initial currency */
+void Bot::addCurrentTimeAsksAndBids(const OrderBookEntry &order, std::vector<OrderBookEntry> &currentTimeAsks, std::vector<OrderBookEntry> &currentTimeBids)
+{
+    if (order.orderType == OrderBookType::ask)
+    {
+        currentTimeAsks.push_back(order);
+    }
+    else if (order.orderType == OrderBookType::bid)
+    {
+        currentTimeBids.push_back(order);
+    }
+}
+
+/** Goes through orders, does analysis on each timestamp and handles buying/selling based on the analysis  */
 void Bot::init()
 {
-    orderBook = app.getOrderBook();
-    currentTime = orderBook.getEarliestTime();
+    auto start = std::chrono::high_resolution_clock::now();
+    OrderBook &orderBook = app.getOrderBook();
+    Wallet &wallet = app.getWallet();
 
-    wallet.insertCurrency("USDT", 10000);
-    // wallet.insertCurrency("BTC", 10);
-    // wallet.insertCurrency("DOGE", 1000000);
-    // wallet.insertCurrency("ETH", 300);
+    wallet.insertCurrency("USDT", 1000000);
+    wallet.insertCurrency("BTC", 100);
+    wallet.insertCurrency("DOGE", 1000000);
+    wallet.insertCurrency("ETH", 300);
 
     std::vector<OrderBookEntry> orders = orderBook.getAllOrders();
-    std::vector<OrderBookEntry> currentTimeOrders;
+    std::vector<OrderBookEntry> currentTimeAsks;
+    std::vector<OrderBookEntry> currentTimeBids;
+
+    std::cout << orders.size() << std::endl;
 
     for (const auto &order : orders)
     {
         // collect orders until the timestamp changes
         if (order.timestamp == currentTime)
         {
-            currentTimeOrders.push_back(order);
+            addCurrentTimeAsksAndBids(order, currentTimeAsks, currentTimeBids);
+
             continue;
         }
 
-        std::cout << "There are " << currentTimeOrders.size() << " orders on " << currentTime << std::endl;
+        std::cout << "There are " << currentTimeAsks.size() + currentTimeBids.size() << " orders on " << currentTime << std::endl;
 
         // once the timestamp changes, process collected orders
         // calculate SMA for each product in the timestamp
-        std::map<std::string, double> rates = getRates(currentTimeOrders);
+        std::map<std::string, double> rates = getRates(currentTimeAsks);
+
+        // log current wallet worth in usd
+        showValueInUsd(rates);
+        
         // calculate EMA for each product in the timestamp
         calculateEMA(rates);
-
-        // TODO: debug info
-        // for (const auto &EMA : EMAs)
-        // {
-        //     for (const auto &test : EMA)
-        //     {
-        //         std::cout << "The product: " << test.first << " The EMA: " << test.second << std::endl;
-        //     }
-        //     std::cout << "---------" << std::endl;
-        // }
 
         // place orders based on changes in EMAs comparing previous and current timestamps
         placeOrders();
 
-        // std::cout << "TEST RECEIVING ORDERS FOR " << currentTime << std::endl;
-        // std::vector<OrderBookEntry> result = orderBook.getOrders(OrderBookType::ask, currentTime, "BTC/USDT");
-        // std::cout << "AMOUNT " << result.size() << std::endl;
-        
-        // remove everything from currentTimeOrders and add the current order
-        currentTimeOrders.clear();
-        currentTime = order.timestamp;
-        currentTimeOrders.push_back(order);
-
         // go to the next timestamp
         app.gotoNextTimeFrame();
+
+        // remove everything from currentTimeAsks and currentTimeBids and add the current order that goes into the next timestamp
+        currentTimeAsks.clear();
+        currentTimeBids.clear();
+        currentTime = order.timestamp;
+
+        addCurrentTimeAsksAndBids(order, currentTimeAsks, currentTimeBids);
 
         std::cout << "-----------------------" << std::endl;
     }
 
     std::cout << wallet.toString() << std::endl;
-}
 
-void Bot::withdrawOrder(OrderBookType orderType, std::string product, std::string timestamp)
-{
-
+    auto end = std::chrono::high_resolution_clock::now();
+    auto result = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "IT TOOK " << result.count() << "ms" << std::endl;
+    ;
 }
 
 OrderBookEntry Bot::createBid(std::string product, double price, std::string timestamp)
 {
     std::cout << "CREATE BID " << timestamp << std::endl;
+    Wallet &wallet = app.getWallet();
 
     std::string currencyType = wallet.getOrderCurrencyType(product, OrderBookType::bid);
     double availableCurrency = wallet.checkBalance(currencyType);
@@ -161,19 +166,19 @@ OrderBookEntry Bot::createBid(std::string product, double price, std::string tim
     // add only 20% to market price because it's used in calculations whether we can fulfill the order
     // so if set it higher, we'll get the priority but will not be able to buy as much as we can
     OrderBookEntry orderBookEntry{
-        price * 1.2, 
+        price * 1.2,
         availableCurrency / price,
         timestamp,
         product,
         OrderBookType::bid,
         "bot"};
 
-    while(!wallet.canFulfillOrder(orderBookEntry))
+    while (!wallet.canFulfillOrder(orderBookEntry))
     {
         // decrease the amount until we can fulfill the order
         if (orderBookEntry.amount > 0)
         {
-            orderBookEntry.amount = orderBookEntry.amount / 2;
+            orderBookEntry.amount = orderBookEntry.amount / 1.2;
         }
     }
 
@@ -183,6 +188,7 @@ OrderBookEntry Bot::createBid(std::string product, double price, std::string tim
 OrderBookEntry Bot::createAsk(std::string product, double price, std::string timestamp)
 {
     std::cout << "CREATE ASK " << timestamp << std::endl;
+    Wallet wallet = app.getWallet();
 
     std::string currencyType = wallet.getOrderCurrencyType(product, OrderBookType::ask);
     double availableCurrency = wallet.checkBalance(currencyType);
@@ -208,7 +214,6 @@ OrderBookEntry Bot::createAsk(std::string product, double price, std::string tim
     return orderBookEntry;
 }
 
-
 void Bot::placeOrders()
 {
     // if the number of EMAs < 2, there is no enough data for decisions
@@ -224,6 +229,8 @@ void Bot::placeOrders()
     std::map<std::string, double> previousEMAs = EMAs[EMAs.size() - 2];
     // EMAs for the current timestamp
     std::map<std::string, double> currentEMAs = EMAs[EMAs.size() - 1];
+
+    OrderBook &orderBook = app.getOrderBook();
 
     for (auto const &eachProductPreviousEMA : previousEMAs)
     {
@@ -247,7 +254,7 @@ void Bot::placeOrders()
             }
 
             // remove current bids
-            // withdrawOrder(OrderBookType::bid, productName, currentTime);
+            orderBook.withdrawOrders(OrderBookType::bid, productName, currentTime, "bot");
         }
         else if (currentEMA > previousEMA)
         {
@@ -263,7 +270,33 @@ void Bot::placeOrders()
             }
 
             // remove current akss
-            // withdrawOrder(OrderBookType::ask, productName, currentTime);
+            orderBook.withdrawOrders(OrderBookType::ask, productName, currentTime, "bot");
         }
     }
+}
+
+void Bot::showValueInUsd(std::map<std::string, double> rates)
+{
+    std::cout << "GET USD TOTAL " << std::endl;
+    OrderBook &orderBook = app.getOrderBook();
+    Wallet &wallet = app.getWallet();
+
+    std::vector<std::string> usdProducts = {"BTC/USDT", "ETH/USDT", "DOGE/USDT"};
+
+    std::map<std::string, double> usdRates;
+
+    double sum;
+
+    for (const auto &product : usdProducts)
+    {
+        std::vector<std::string> currencies = CSVReader::tokenise(product, '/');
+
+        double currencyBalance = wallet.checkBalance(currencies[0]);
+
+        sum = sum + rates[product] * currencyBalance;
+    }
+
+    sum = sum + wallet.checkBalance("USDT");
+
+    std::cout << "TOTALS IN USD: " << sum << std::endl;
 }

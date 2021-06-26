@@ -18,11 +18,11 @@ class OrderBook
         std::vector<OrderBookEntry> getOrders(
             OrderBookType type, 
             std::string timestamp,
-            std::string product = ""
+            std::string product
         );
 
         /** return all orders */
-        std::vector<OrderBookEntry> getAllOrders();
+        const std::vector<OrderBookEntry>& getAllOrders();
 
         static double getHighPrice(std::vector<OrderBookEntry>& orders);
         static double getLowPrice(std::vector<OrderBookEntry>& orders);
@@ -38,6 +38,9 @@ class OrderBook
         void insertOrder(OrderBookEntry &order);
 
         std::vector<OrderBookEntry> matchAsksToBids(std::string product, std::string timestamp);
+
+
+        void withdrawOrders(OrderBookType orderType, std::string product, std::string timestamp, std::string username);
 
     private:
        std::vector<OrderBookEntry> orders;
