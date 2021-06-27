@@ -114,9 +114,8 @@ double OrderBook::getPriceChangePercentage(std::vector<OrderBookEntry> &orders)
 void OrderBook::insertOrder(OrderBookEntry &order)
 {
     std::string message = "Inserted an order: " +
-                          order.product + "," + std::to_string(order.price) +
-                          "," + std::to_string(order.amount) + "," +
-                          OrderBookEntry::orderBookTypeToString(order.orderType) + "," + order.timestamp;
+                          OrderBookEntry::orderBookTypeToString(order.orderType) + "," + order.product + "," + std::to_string(order.price) +
+                          "," + std::to_string(order.amount) + "," + order.timestamp;
     std::cout << "OrderBook::insertOrder " << message << std::endl;
     Logger::pushToLog(message);
 
@@ -186,6 +185,8 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
             throw "The ask sale was not put by simuser";
         }
 
+        Logger::pushToLog("Make a sell: " + OrderBookEntry::orderBookTypeToString(type) + "," + product + "," +
+                          std::to_string(ask.price) + "," + std::to_string(saleAmount) + "," + timestamp);
         sales.push_back({ask.price, saleAmount, timestamp, product, type, username});
     }
 

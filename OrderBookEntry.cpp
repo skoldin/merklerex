@@ -32,8 +32,10 @@ std::string OrderBookEntry::orderBookTypeToString(OrderBookType orderBookType)
   switch (orderBookType)
   {
   case OrderBookType::ask:
+  case OrderBookType::asksale:
     return "Ask";
   case OrderBookType::bid:
+  case OrderBookType::bidsale:
     return "Bid";
   default:
     return "Unknown";
