@@ -115,8 +115,11 @@ void Wallet::processSale(OrderBookEntry &sale)
 
         std::string incomingCurrency = orderCurrencies[1];
 
-        currencies[incomingCurrency] += incomingAmount;
-        currencies[outgoingCurrency] -= outgoingAmount;
+        if (containsCurrency(outgoingCurrency, outgoingAmount))
+        {
+            currencies[incomingCurrency] += incomingAmount;
+            currencies[outgoingCurrency] -= outgoingAmount;
+        }
     }
 
     if (sale.orderType == OrderBookType::bidsale)
@@ -129,8 +132,11 @@ void Wallet::processSale(OrderBookEntry &sale)
 
         std::string outgoingCurrency = orderCurrencies[1];
 
-        currencies[incomingCurrency] += incomingAmount;
-        currencies[outgoingCurrency] -= outgoingAmount;
+        if (containsCurrency(outgoingCurrency, outgoingAmount))
+        {
+            currencies[incomingCurrency] += incomingAmount;
+            currencies[outgoingCurrency] -= outgoingAmount;
+        }
     }
 }
 
