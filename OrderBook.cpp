@@ -120,8 +120,6 @@ void OrderBook::insertOrder(OrderBookEntry &order)
     Logger::pushToLog(message);
 
     orders.push_back(order);
-
-    std::sort(orders.begin(), orders.end(), OrderBookEntry::compareByTimemstamp);
 }
 
 std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std::string timestamp)

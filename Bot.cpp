@@ -34,7 +34,6 @@ std::map<std::string, double> Bot::getRates(std::vector<OrderBookEntry> asks)
         }
     }
 
-
     Logger::pushToLog("Rates:");
     // iterate through sums map and calculate simple moving average for each
     for (const auto &sum : sums)
@@ -136,12 +135,22 @@ void Bot::init()
 
         // calculate EMA for each product in the timestamp
         calculateEMA(rates);
-
+        auto startPlace = std::chrono::high_resolution_clock::now();
         // place orders based on changes in EMAs comparing previous and current timestamps
         placeOrders();
+        auto endPlace = std::chrono::high_resolution_clock::now();
+        auto resultPlace = std::chrono::duration_cast<std::chrono::milliseconds>(endPlace - startPlace);
+
+        std::cout << "Running placeOrders time: " << resultPlace.count() << "ms" << std::endl;
 
         // go to the next timestamp
+        auto start = std::chrono::high_resolution_clock::now();
+        // go to the next timestamp
         app.gotoNextTimeFrame();
+        auto end = std::chrono::high_resolution_clock::now();
+        auto result = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        std::cout << "Running gotoNextTimeFrame time: " << result.count() << "ms" << std::endl;
 
         // remove everything from currentTimeAsks and currentTimeBids and add the current order that goes into the next timestamp
         currentTimeAsks.clear();
@@ -249,6 +258,7 @@ void Bot::placeOrders()
             // the price decreased, it's a good time to remove bids and create asks as we expect it might decrease further
             std::cout << productName << " price decreased from " << previousEMA << " to " << currentEMA << std::endl;
 
+            // TODO: performance bottleneck
             OrderBookEntry orderBookEntry = createAsk(productName, currentEMA, currentTime);
 
             if (orderBookEntry.amount > 0)
@@ -268,7 +278,6 @@ void Bot::placeOrders()
 
             if (orderBookEntry.amount > 0)
             {
-                // TODO: push to log
                 orderBook.insertOrder(orderBookEntry);
             }
 
@@ -300,5 +309,5 @@ double Bot::getValueInUsd(std::map<std::string, double> rates)
 
     sum = sum + wallet.checkBalance("USDT");
 
-    return sum; 
+    return sum;
 }
